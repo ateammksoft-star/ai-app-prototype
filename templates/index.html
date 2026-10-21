@@ -2,33 +2,270 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>AI上司アプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>タスク管理 | AI上司</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "BIZ UDPGothic", "Yu Gothic UI", sans-serif;
+            color: #202d35;
+            background: #f3f5f2;
+        }
+        body { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+        h1, h2 { margin-top: 0; }
+        h1 { font-size: 28px; }
+        h2 { font-size: 19px; }
+        section { margin: 24px 0; padding: 24px; background: #fff; border: 1px solid #dce3df; border-radius: 6px; }
+        .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .search-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+        .dashboard-item { padding: 12px 14px; border-left: 3px solid #176b61; background: #f3f5f2; }
+        .dashboard-label { display: block; color: #53645d; font-size: 13px; }
+        .dashboard-value { display: block; margin-top: 4px; font-size: 24px; font-weight: 700; }
+        label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+        input, select, textarea, button { box-sizing: border-box; font: inherit; }
+        input, select, textarea { width: 100%; padding: 10px; color: inherit; border: 1px solid #b8c5bf; border-radius: 4px; background: #fff; }
+        textarea { min-height: 90px; resize: vertical; }
+        .wide { grid-column: 1 / -1; }
+        button { margin-top: 16px; padding: 10px 18px; color: #fff; border: 0; border-radius: 4px; background: #176b61; cursor: pointer; }
+        button:hover { background: #10574f; }
+        .search-fields button { margin-top: 0; }
+        .clear-search { display: inline-block; padding: 10px 0; color: #176b61; font-size: 14px; }
+        .ai-result { margin-top: 16px; padding: 14px; border-left: 3px solid #176b61; background: #f3f5f2; white-space: pre-wrap; }
+        .ai-error { margin: 12px 0; color: #a3322c; }
+        .chat-message { margin: 12px 0; padding: 12px; background: #f3f5f2; white-space: pre-wrap; }
+        .draft-item { margin-top: 16px; padding: 16px; border: 1px solid #dce3df; border-radius: 4px; }
+        .notice { margin: 12px 0; color: #176b61; }
+        .error { margin: 12px 0; color: #a3322c; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #e0e6e2; vertical-align: top; }
+        th { color: #53645d; font-size: 13px; white-space: nowrap; }
+        td { font-size: 14px; }
+        .task-title { font-weight: 700; }
+        .task-details { display: block; margin-top: 4px; color: #66766f; white-space: pre-wrap; }
+        @media (max-width: 640px) {
+            body { padding: 20px 14px; }
+            section { padding: 18px 14px; }
+            .fields { grid-template-columns: 1fr; }
+            .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .search-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .search-actions { grid-column: 1 / -1; }
+            .wide { grid-column: auto; }
+        }
+    </style>
 </head>
 <body>
 
-    <h1>AI上司アプリ</h1>
+    <h1>タスク管理</h1>
+    {% if ai_error %}<p class="ai-error" role="alert">{{ ai_error }}</p>{% endif %}
 
-    <form method="post">
+    <section aria-labelledby="dashboard-title">
+        <h2 id="dashboard-title">タスク状況</h2>
+        <div class="dashboard-grid">
+            <div class="dashboard-item"><span class="dashboard-label">総タスク数</span><span class="dashboard-value">{{ task_counts.total }}</span></div>
+            <div class="dashboard-item"><span class="dashboard-label">未着手</span><span class="dashboard-value">{{ task_counts.not_started }}</span></div>
+            <div class="dashboard-item"><span class="dashboard-label">進行中</span><span class="dashboard-value">{{ task_counts.in_progress }}</span></div>
+            <div class="dashboard-item"><span class="dashboard-label">完了</span><span class="dashboard-value">{{ task_counts.completed }}</span></div>
+            <div class="dashboard-item"><span class="dashboard-label">保留</span><span class="dashboard-value">{{ task_counts.on_hold }}</span></div>
+        </div>
+        <form method="post">
+            <input type="hidden" name="action" value="ai_dashboard">
+            <button type="submit">AIで状況を分析</button>
+        </form>
+        {% if dashboard_analysis %}<p class="ai-result">{{ dashboard_analysis }}</p>{% endif %}
+    </section>
 
-        <p>完了したタスク</p>
+    <section>
+        <h2>AIタスク作成支援</h2>
+        <form method="post">
+            <input type="hidden" name="action" value="ai_create">
+            <label>作業内容を自然文で入力
+                <textarea name="description" maxlength="1000" required placeholder="例: 来週金曜日までに顧客向け提案資料を作成して山田さんにレビュー依頼">{{ form_data.get('description', '') }}</textarea>
+            </label>
+            <button type="submit">タスク案を作成</button>
+        </form>
+        {% if ai_create_message %}<p class="notice" role="status">{{ ai_create_message }}</p>{% endif %}
+        {% for draft in ai_task_drafts %}
+        <form method="post" class="draft-item">
+            <input type="hidden" name="action" value="register">
+            <label>タスク名
+                <input type="text" name="title" maxlength="200" required value="{{ draft.title }}">
+            </label>
+            <label>タスク詳細
+                <textarea name="details" maxlength="2000">{{ draft.details }}</textarea>
+            </label>
+            <label>期限日
+                <input type="date" name="due_date" required value="{{ draft.due_date }}">
+            </label>
+            <label>担当者
+                <input type="text" name="assignee" maxlength="100" required value="{{ draft.assignee }}">
+            </label>
+            <label>優先度
+                <select name="priority" required>
+                    {% for priority in priorities %}
+                    <option value="{{ priority }}" {% if draft.priority == priority %}selected{% endif %}>{{ priority }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <input type="hidden" name="status" value="未着手">
+            <p>ステータス: 未着手</p>
+            <button type="submit">このタスク案を登録</button>
+        </form>
+        {% endfor %}
+    </section>
 
-        <input
-            type="text"
-            name="task"
-            size="50"
-            required>
+    <section>
+        <h2>タスクを登録</h2>
+        {% if registered %}<p class="notice" role="status">タスクを登録しました。</p>{% endif %}
+        {% if deleted %}<p class="notice" role="status">タスクを削除しました。</p>{% endif %}
+        {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post">
+            <input type="hidden" name="action" value="register">
+            <div class="fields">
+                <label>タスク名
+                    <input type="text" name="title" maxlength="200" required value="{{ form_data.get('title', '') }}">
+                </label>
+                <label>期限日
+                    <input type="date" name="due_date" required value="{{ form_data.get('due_date', '') }}">
+                </label>
+                <label>優先度
+                    <select name="priority" required>
+                        <option value="">選択してください</option>
+                        {% for priority in priorities %}
+                        <option value="{{ priority }}" {% if form_data.get('priority') == priority %}selected{% endif %}>{{ priority }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>担当者
+                    <input type="text" name="assignee" maxlength="100" required value="{{ form_data.get('assignee', '') }}">
+                </label>
+                <label>ステータス
+                    <select name="status" required>
+                        <option value="">選択してください</option>
+                        {% for status in statuses %}
+                        <option value="{{ status }}" {% if form_data.get('status', '未着手') == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="wide">タスク詳細
+                    <textarea name="details" maxlength="2000">{{ form_data.get('details', '') }}</textarea>
+                </label>
+            </div>
+            <button type="submit">タスクを登録</button>
+        </form>
+    </section>
 
-        <button type="submit">
-            完了
-        </button>
+    <section>
+        <h2>タスク一覧</h2>
+        <form method="post">
+            <input type="hidden" name="action" value="ai_search">
+            <label>自然文でタスクを検索
+                <input type="search" name="query" maxlength="300" required value="{{ ai_search_query }}" placeholder="例: 今週期限の高優先度タスク">
+            </label>
+            <button type="submit">AI検索</button>
+        </form>
+        {% if ai_search_applied %}<p class="notice" role="status">AIが解釈した条件で検索しています。</p>{% endif %}
+        <form method="get" class="search-fields">
+            <label>タスク名
+                <input type="search" name="title" value="{{ filters.title }}">
+            </label>
+            <label>担当者
+                <input type="search" name="assignee" value="{{ filters.assignee }}">
+            </label>
+            <label>期限日（開始）
+                <input type="date" name="due_from" value="{{ filters.due_from }}">
+            </label>
+            <label>期限日（終了）
+                <input type="date" name="due_to" value="{{ filters.due_to }}">
+            </label>
+            <label>ステータス
+                <select name="status">
+                    <option value="">すべて</option>
+                    {% for status in statuses %}
+                    <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>優先度
+                <select name="priority">
+                    <option value="">すべて</option>
+                    {% for priority in priorities %}
+                    <option value="{{ priority }}" {% if filters.priority == priority %}selected{% endif %}>{{ priority }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>ソート条件
+                <select name="sort_by">
+                    {% for value, label in sort_options.items() %}
+                    <option value="{{ value }}" {% if sort_by == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>順序
+                <select name="sort_order">
+                    {% for value, label in sort_orders.items() %}
+                    <option value="{{ value }}" {% if sort_order == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="search-actions">
+                <button type="submit">検索</button>
+                {% if has_filters %}<a class="clear-search" href="{{ url_for('index') }}">条件をクリア</a>{% endif %}
+            </div>
+        </form>
+        {% if tasks %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>タスク</th><th>担当者</th><th>優先度</th><th>ステータス</th><th>期限日</th><th>作成日</th></tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td><a class="task-title" href="{{ url_for('task_detail', task_id=task.id) }}">{{ task.title }}</a>{% if task.details %}<span class="task-details">{{ task.details }}</span>{% endif %}</td>
+                        <td>{{ task.assignee }}</td>
+                        <td>{{ task.priority }}</td>
+                        <td>{{ task.status }}</td>
+                        <td>{{ task.due_date }}</td>
+                        <td>{{ task.created_at or "記録なし" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>{% if has_filters %}条件に一致するタスクはありません。{% else %}登録されたタスクはありません。{% endif %}</p>
+        {% endif %}
+    </section>
 
-    </form>
+    <section>
+        <h2>AIタスクアシスタント</h2>
+        <form method="post">
+            <input type="hidden" name="action" value="chat">
+            <input type="hidden" name="chat_history" value="{{ chat_history_json }}">
+            <label>タスクについて質問
+                <input type="text" name="question" maxlength="1000" required value="{{ chat_question }}" placeholder="例: 今日対応すべきタスクは？">
+            </label>
+            <button type="submit">質問する</button>
+        </form>
+        {% for message in chat_history %}
+        <p class="chat-message"><strong>{% if message.role == 'user' %}質問{% else %}AI{% endif %}</strong><br>{{ message.content }}</p>
+        {% endfor %}
+    </section>
 
-    <hr>
+    <section>
+        <h2>完了タスクへのAIコメント</h2>
+        <form method="post">
+            <input type="hidden" name="action" value="comment">
+            <label>完了したタスク
+                <input type="text" name="task" required>
+            </label>
+            <button type="submit">コメントを生成</button>
+        </form>
 
-    <h2>AIコメント</h2>
-
-    <p>{{ comment }}</p>
+        {% if comment %}<p>{{ comment }}</p>{% endif %}
+    </section>
 
 </body>
 </html>

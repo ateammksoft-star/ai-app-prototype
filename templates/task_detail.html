@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ task.title }} | タスク詳細</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "BIZ UDPGothic", "Yu Gothic UI", sans-serif;
+            color: #202d35;
+            background: #f3f5f2;
+        }
+        body { max-width: 840px; margin: 0 auto; padding: 32px 24px; }
+        a { color: #176b61; }
+        h1 { margin: 24px 0; font-size: 28px; overflow-wrap: anywhere; }
+        dl { margin: 0; background: #fff; border: 1px solid #dce3df; border-radius: 6px; }
+        .field { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; padding: 16px 20px; border-bottom: 1px solid #e0e6e2; }
+        .field:last-child { border-bottom: 0; }
+        dt { color: #53645d; font-size: 14px; font-weight: 600; }
+        dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .details { min-height: 48px; }
+        section { margin-top: 24px; padding: 20px; background: #fff; border: 1px solid #dce3df; border-radius: 6px; }
+        h2 { margin-top: 0; font-size: 19px; }
+        form { display: grid; gap: 16px; }
+        label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+        input, select, textarea, button { box-sizing: border-box; font: inherit; }
+        input, select, textarea { width: 100%; padding: 10px; color: inherit; border: 1px solid #b8c5bf; border-radius: 4px; background: #fff; }
+        textarea { min-height: 100px; resize: vertical; }
+        button { justify-self: start; padding: 10px 18px; color: #fff; border: 0; border-radius: 4px; background: #176b61; cursor: pointer; }
+        button:hover { background: #10574f; }
+        .danger-button { background: #a3322c; }
+        .danger-button:hover { background: #85241f; }
+        .notice { color: #176b61; }
+        .error { color: #a3322c; }
+        .ai-result { margin: 0; padding: 14px; border-left: 3px solid #176b61; background: #f3f5f2; white-space: pre-wrap; }
+        .comment-list { list-style: none; margin: 0; padding: 0; }
+        .comment-item { padding: 14px 0; border-bottom: 1px solid #e0e6e2; }
+        .comment-item:last-child { border-bottom: 0; }
+        .comment-meta { margin-bottom: 6px; color: #66766f; font-size: 13px; }
+        .comment-content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+        @media (max-width: 560px) {
+            body { padding: 20px 14px; }
+            .field { grid-template-columns: 1fr; gap: 6px; padding: 14px; }
+            section { padding: 16px 14px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('index') }}">タスク一覧へ戻る</a>
+    <h1>{{ task.title }}</h1>
+    <dl>
+        <div class="field"><dt>タスク名</dt><dd>{{ task.title }}</dd></div>
+        <div class="field details"><dt>タスク詳細</dt><dd>{{ task.details or "詳細はありません" }}</dd></div>
+        <div class="field"><dt>担当者</dt><dd>{{ task.assignee }}</dd></div>
+        <div class="field"><dt>優先度</dt><dd>{{ task.priority }}</dd></div>
+        <div class="field"><dt>ステータス</dt><dd>{{ task.status }}</dd></div>
+        <div class="field"><dt>作成日</dt><dd>{{ task.created_at or "記録なし" }}</dd></div>
+        <div class="field"><dt>更新日</dt><dd>{{ task.updated_at or "記録なし" }}</dd></div>
+        <div class="field"><dt>完了日時</dt><dd>{{ task.completed_at or "未記録" }}</dd></div>
+        <div class="field"><dt>期限日</dt><dd>{{ task.due_date }}</dd></div>
+    </dl>
+    <section>
+        <h2>AIによるタスク分析</h2>
+        {% if ai_error %}<p class="error" role="alert">{{ ai_error }}</p>{% endif %}
+        <form method="post">
+            <input type="hidden" name="action" value="ai_priority">
+            <button type="submit">優先度を提案</button>
+        </form>
+        {% if priority_suggestion %}
+        <p class="ai-result"><strong>推奨優先度: {{ priority_suggestion.priority }}</strong><br>{{ priority_suggestion.reason }}</p>
+        {% endif %}
+        <form method="post">
+            <input type="hidden" name="action" value="ai_progress">
+            <button type="submit">進捗・遅延リスクを分析</button>
+        </form>
+        {% if progress_analysis %}<p class="ai-result">{{ progress_analysis }}</p>{% endif %}
+    </section>
+    <section>
+        <h2>コメント・作業メモ</h2>
+        {% if commented %}<p class="notice" role="status">コメントを登録しました。</p>{% endif %}
+        {% if comment_error %}<p class="error" role="alert">{{ comment_error }}</p>{% endif %}
+        <form method="post">
+            <input type="hidden" name="action" value="comment">
+            <label>コメント・作業メモ
+                <textarea name="content" maxlength="2000" required>{{ comment_form_data.get('content', '') }}</textarea>
+            </label>
+            <button type="submit">コメントを登録</button>
+        </form>
+        {% if comments %}
+        <ul class="comment-list">
+            {% for comment in comments %}
+            <li class="comment-item">
+                <p class="comment-meta">{{ comment.created_at }}</p>
+                <p class="comment-content">{{ comment.content }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>コメントはまだありません。</p>
+        {% endif %}
+    </section>
+    <section>
+        <h2>タスクを編集</h2>
+        {% if updated %}<p class="notice" role="status">変更を保存しました。</p>{% endif %}
+        {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+        <form method="post">
+            <label>タスク名
+                <input type="text" name="title" maxlength="200" required value="{{ form_data.get('title', task.title) }}">
+            </label>
+            <label>タスク詳細
+                <textarea name="details" maxlength="2000">{{ form_data.get('details', task.details or '') }}</textarea>
+            </label>
+            <label>担当者
+                <input type="text" name="assignee" maxlength="100" required value="{{ form_data.get('assignee', task.assignee) }}">
+            </label>
+            <label>優先度
+                <select name="priority" required>
+                    {% for priority in priorities %}
+                    <option value="{{ priority }}" {% if form_data.get('priority', task.priority) == priority %}selected{% endif %}>{{ priority }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>ステータス
+                <select name="status" required>
+                    {% for status in statuses %}
+                    <option value="{{ status }}" {% if form_data.get('status', task.status) == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>期限日
+                <input type="date" name="due_date" required value="{{ form_data.get('due_date', task.due_date) }}">
+            </label>
+            <button type="submit">変更を保存</button>
+        </form>
+    </section>
+    <section>
+        <h2>タスクを削除</h2>
+        <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" onsubmit="return confirm('このタスクを削除します。よろしいですか？');">
+            <button class="danger-button" type="submit">タスクを削除</button>
+        </form>
+    </section>
+</body>
+</html>
