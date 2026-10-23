@@ -1,0 +1,22 @@
+TRY004 Prefer `TypeError` exception for invalid type
+  --> app.py:57:9
+   |
+55 |     result = json.loads(response)
+56 |     if not isinstance(result, dict):
+57 |         raise ValueError("Geminiの応答形式が正しくありません。")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+58 |     return result
+   |
+
+TRY004 Prefer `TypeError` exception for invalid type
+   --> app.py:541:29
+    |
+539 |                     for draft in drafts:
+540 |                         if not isinstance(draft, dict):
+541 |                             raise ValueError("AIが作成したタスク案の形式が正しくありません。")
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+542 |                         title = str(draft.get("title") or "").strip()
+543 |                         details = str(draft.get("details") or "").strip()
+    |
+
+Found 4 errors (2 fixed, 2 remaining).

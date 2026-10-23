@@ -1,0 +1,129 @@
+/ import os
+2 | | import json
+3 | | import sqlite3
+4 | | from datetime import datetime
+5 | |
+6 | | from flask import Flask, abort, redirect, render_template, request, url_for
+7 | | from google import genai
+  | |________________________^
+8 |
+9 |   app = Flask(__name__)
+  |
+help: Organize imports
+  |
+1 + import json
+2 | import os
+  - import json
+3 | import sqlite3
+  |
+
+TRY004 Prefer `TypeError` exception for invalid type
+  --> app.py:57:9
+   |
+55 |     result = json.loads(response)
+56 |     if not isinstance(result, dict):
+57 |         raise ValueError("Geminiの応答形式が正しくありません。")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+58 |     return result
+   |
+
+TRY004 Prefer `TypeError` exception for invalid type
+   --> app.py:541:29
+    |
+539 |                     for draft in drafts:
+540 |                         if not isinstance(draft, dict):
+541 |                             raise ValueError("AIが作成したタスク案の形式が正しくありません。")
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+542 |                         title = str(draft.get("title") or "").strip()
+543 |                         details = str(draft.get("details") or "").strip()
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> test_gemini.py:1:1
+  |
+1 | / from google import genai
+2 | | import sys
+3 | | import os
+  | |_________^
+4 |
+5 |   client = genai.Client(
+  |
+help: Organize imports
+  |
+  - from google import genai
+  - import sys
+1 | import os
+2 + import sys
+3 +
+4 + from google import genai
+5 |
+  |
+
+Found 4 errors.
+[*] 2 fixable with `--fix`.
+@ateammksoft-star ➜ /workspaces/ai-app-prototype (development) $ ruff check .
+I001 [*] Import block is un-sorted or un-formatted
+ --> app.py:1:1
+  |
+1 | / import os
+2 | | import json
+3 | | import sqlite3
+4 | | from datetime import datetime
+5 | |
+6 | | from flask import Flask, abort, redirect, render_template, request, url_for
+7 | | from google import genai
+  | |________________________^
+8 |
+9 |   app = Flask(__name__)
+  |
+help: Organize imports
+  |
+1 + import json
+2 | import os
+  - import json
+3 | import sqlite3
+  |
+
+TRY004 Prefer `TypeError` exception for invalid type
+  --> app.py:57:9
+   |
+55 |     result = json.loads(response)
+56 |     if not isinstance(result, dict):
+57 |         raise ValueError("Geminiの応答形式が正しくありません。")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+58 |     return result
+   |
+
+TRY004 Prefer `TypeError` exception for invalid type
+   --> app.py:541:29
+    |
+539 |                     for draft in drafts:
+540 |                         if not isinstance(draft, dict):
+541 |                             raise ValueError("AIが作成したタスク案の形式が正しくありません。")
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+542 |                         title = str(draft.get("title") or "").strip()
+543 |                         details = str(draft.get("details") or "").strip()
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> test_gemini.py:1:1
+  |
+1 | / from google import genai
+2 | | import sys
+3 | | import os
+  | |_________^
+4 |
+5 |   client = genai.Client(
+  |
+help: Organize imports
+  |
+  - from google import genai
+  - import sys
+1 | import os
+2 + import sys
+3 +
+4 + from google import genai
+5 |
+  |
+
+Found 4 errors.
